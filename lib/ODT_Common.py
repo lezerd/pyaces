@@ -1,7 +1,14 @@
 import math
 import numpy as np
-from .transform_common import AP1_2_XYZ_MAT, XYZ_2_AP1_MAT
-from .utilities_color import XYZ_2_xyY, xyY_2_XYZ
+from .transform_common import AP1_2_XYZ_MAT, XYZ_2_AP1_MAT, AP1_RGB2Y
+from .utilities_color import (
+    XYZ_2_xyY,
+    xyY_2_XYZ,
+    calc_sat_adjust_matrix,
+    calculate_cat_matrix,
+    AP0,
+    REC709_PRI,
+)
 
 # Target white and black points for cinema system tonescale
 CINEMA_WHITE = 48.0
@@ -17,6 +24,9 @@ CINEMA_BLACK = math.pow(10, math.log10(0.02))  # CINEMA_WHITE / 2400.
 
 DIM_SURROUND_GAMMA = 0.9811
 
+ODT_SAT_FACTOR = 0.93
+ODT_SAT_MAT = calc_sat_adjust_matrix(ODT_SAT_FACTOR, AP1_RGB2Y)
+
 
 def Y_2_linCV(Y: float, Ymax: float, Ymin: float) -> float:
     return (Y - Ymin) / (Ymax - Ymin)
@@ -30,3 +40,6 @@ def darkSurround_to_dimSurround(linearCV: np.array) -> np.array:
     XYZ = xyY_2_XYZ(xyY)
 
     return XYZ_2_AP1_MAT @ XYZ
+
+
+D60_2_D65_CAT = calculate_cat_matrix(AP0.white, REC709_PRI.white)

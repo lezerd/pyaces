@@ -80,7 +80,7 @@ def rrt_main(
         rgbPost[1] = segmented_spline_c5_fwd(rgbPre[1])
         rgbPost[2] = segmented_spline_c5_fwd(rgbPre[2])
     else:
-        rgbPost = rgbPre
+        rgbPost = np.copy(rgbPre)
 
     # // --- RGB rendering space to OCES --- //
     rgbOces = AP1_to_AP0_MATRIX @ rgbPost

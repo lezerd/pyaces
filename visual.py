@@ -22,6 +22,11 @@ def rle_to_lin(rle):
     return 2 ** (rle + MIDDLE_GRAY_LE)
 
 
+def lin_to_rdlog2(lin):
+    MIDDLE_GRAY_LOG2 = -3.300177621055729
+    return math.log2(max(lin, 2e-16)) - MIDDLE_GRAY_LOG2
+
+
 def sRGBOETF(lin):
     return 1.055 * lin ** (1 / 2.4) - 0.055 if lin > 0.0031308 else 12.92 * lin
 
@@ -64,6 +69,7 @@ def acescc_logtolin(logval):
 
 rle = np.vectorize(lin_to_rle)
 rle2lin = np.vectorize(rle_to_lin)
+rdlog2 = np.vectorize(lin_to_rdlog2)
 cct_lin_to_log = np.vectorize(acescct_lintolog)
 cct_log_to_lin = np.vectorize(acescct_logtolin)
 cc_lin_to_log = np.vectorize(acescc_lintolog)
@@ -287,7 +293,42 @@ from lib.utilities_color import rgb_2_hue
 ##vis.show()
 
 # vis tonescale :
-from lib.Tonescales import segmented_spline_c5_fwd, segmented_spline_c9_fwd
+##from lib.Tonescales import segmented_spline_c5_fwd, segmented_spline_c9_fwd
+##
+##fig, ax = plt.subplots()
+##plt.style.use("seaborn-v0_8-whitegrid")
+##ax.spines["bottom"].set_linewidth(2)
+##ax.spines["left"].set_linewidth(2)
+##ax.spines["top"].set_visible(False)
+##ax.spines["right"].set_visible(False)
+##ax.tick_params(width=2)
+##ax.grid(True)
+### ax.set_xlim(0, 100)
+### ax.set_ylim(0, 1)
+##
+##x_axis = np.linspace(math.log10(5.5e-6), math.log10(47000), 220)
+##x_axis = np.pow(10, x_axis)
+##y_axis = []
+##for x in x_axis:
+##    y = segmented_spline_c9_fwd(x)
+##    y_axis.append(y)
+##y_axis = np.array(y_axis)
+##print(segmented_spline_c9_fwd(4.8))
+##plt.plot(np.log10(x_axis), np.log10(y_axis))
+##plt.show()
+
+
+# vis gloabl tonescale :
+from rrt import rrt_main
+from ODT_REC709_100nits_dim import main_odt_rec709D65
+from lib.utilities_color import bt1886_f, bt1886_r
+from lib.ODT_Common import darkSurround_to_dimSurround
+
+DISPGAMMA = 2.4
+L_W = 1.0
+L_B = 0.0
+bt1886_f = np.vectorize(bt1886_f)
+bt1886_r = np.vectorize(bt1886_r)
 
 fig, ax = plt.subplots()
 plt.style.use("seaborn-v0_8-whitegrid")
@@ -298,15 +339,95 @@ ax.spines["right"].set_visible(False)
 ax.tick_params(width=2)
 ax.grid(True)
 # ax.set_xlim(0, 100)
-# ax.set_ylim(0, 1)
+min = np.log2(
+    bt1886_r(
+        darkSurround_to_dimSurround(np.array([0.02, 0.02, 0.02])),
+        DISPGAMMA,
+        L_W,
+        L_B,
+    )
+)
+# ax.set_ylim(0,1)
 
-x_axis = np.linspace(math.log10(5.5e-6), math.log10(47000), 220)
-x_axis = np.pow(10, x_axis)
+x_axis = np.linspace(-11, 11, 220)
+x_axis = rle2lin(x_axis)
 y_axis = []
 for x in x_axis:
-    y = segmented_spline_c9_fwd(x)
-    y_axis.append(y)
+    rgb = bt1886_f(
+        main_odt_rec709D65(
+            rrt_main(np.array([x, x, x]), tonescale=True),
+            tone_scale=True,
+            surround_adaptation=True,
+            gamma=True,
+            scale=True,
+        ),
+        DISPGAMMA,
+        L_W,
+        L_B,
+    )
+    y_axis.append(rgb[1])
 y_axis = np.array(y_axis)
-print(segmented_spline_c9_fwd(4.8))
-plt.plot(np.log10(x_axis), np.log10(y_axis))
+print(
+    bt1886_f(
+        main_odt_rec709D65(rrt_main(np.array([0.18, 0.18, 0.18]))),
+        DISPGAMMA,
+        L_W,
+        L_B,
+    )
+)
+plt.plot(rle(x_axis), (y_axis))
 plt.show()
+
+
+### vis Y_2_LinCV :
+##from lib.ODT_Common import (
+##    Y_2_linCV,
+##    CINEMA_BLACK,
+##    CINEMA_WHITE,
+##    darkSurround_to_dimSurround,
+##)
+##from lib.Tonescales import segmented_spline_c9_fwd, segmented_spline_c5_fwd
+##from rrt import rrt_main
+##from ODT_REC709_100nits_dim import main_odt_rec709D65
+##from lib.utilities_color import bt1886_f, bt1886_r
+##from lib.ODT_Common import darkSurround_to_dimSurround
+##
+##DISPGAMMA = 2.4
+##L_W = 1.0
+##L_B = 0.0
+##bt1886_f = np.vectorize(bt1886_f)
+##bt1886_r = np.vectorize(bt1886_r)
+##
+##fig, ax = plt.subplots()
+##plt.style.use("seaborn-v0_8-whitegrid")
+##ax.spines["bottom"].set_linewidth(2)
+##ax.spines["left"].set_linewidth(2)
+##ax.spines["top"].set_visible(False)
+##ax.spines["right"].set_visible(False)
+##ax.tick_params(width=2)
+##ax.grid(True)
+##min = np.log2(
+##    bt1886_r(
+##        darkSurround_to_dimSurround(np.array([0.02, 0.02, 0.02])),
+##        DISPGAMMA,
+##        L_W,
+##        L_B,
+##    )
+##)
+### ax.set_xlim(0, 100)
+### ax.set_ylim(min[1], 1)
+##
+##x_axis = np.linspace(math.log10(5.5e-6), math.log10(200), 200)
+##x_axis = np.pow(10, x_axis)
+##y_axis = []
+##for x in x_axis:
+##    y = segmented_spline_c5_fwd(x)
+##    y = segmented_spline_c9_fwd(y)
+##    y = Y_2_linCV(y, CINEMA_WHITE, CINEMA_BLACK)
+##    y = darkSurround_to_dimSurround(np.array([y, y, y]))
+##    y = y[1]
+##    y_axis.append(y)
+##y_axis = np.array(y_axis)
+##
+##plt.plot(rle(x_axis), (y_axis))
+##plt.show()
