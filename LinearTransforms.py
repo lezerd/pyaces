@@ -1,0 +1,54 @@
+import numpy as np
+
+
+# Function for genrating matrix to convert relative (0.0 to 1.0) RGB datas to XYZ
+# Arguments :
+#               Wx, Wy : White point cie 1931 chromaticity
+#               Rx, Ry : Red point cie 1931 chromaticity
+#               Gx, Gy : Green point cie 1931 chromaticity
+#               Bx, By : Blue point cie 1931 chromaticity
+
+def generateRGBtoXYZmatrix(Wx, Wy, Rx, Ry, Gx, Gy, Bx, By):
+    # Generate white point missing XYZ coordinates
+    Sw = 1 / Wy
+    Xw = Wx * Sw
+    Zw = (1 - Wx - Wy) * Sw
+    Yw = 1
+    W = np.array([Xw, Yw, Zw])
+
+    # Calculate z for each primaries
+    Rz = (1 - Rx - Ry)
+    Gz = (1 - Gx - Gy)
+    Bz = (1 - Bx - By)
+
+    # Compute the Sum X+Y+Z for each primaries
+    Srgb = np.matmul(np.linalg.inv(np.array([[Rx, Gx, Bx], [Ry, Gy, By], [Rz, Gz, Bz]])), W)
+
+    # Compute the matrix
+    return np.matmul(np.array([[Rx, Gx, Bx], [Ry, Gy, By], [Rz, Gz, Bz]]),
+                     np.array([[Srgb[0], 0, 0], [0, Srgb[1], 0], [0, 0, Srgb[2]]]))
+
+
+# Function for genrating matrix to convert normalizedimport coulour (Ymax = 1.0) XYZ datas to RGB
+# Arguments :
+#               Wx, Wy : White point cie 1931 chromaticity
+#               Rx, Ry : Red point cie 1931 chromaticity
+#               Gx, Gy : Green point cie 1931 chromaticity
+#               Bx, By : Blue point cie 1931 chromaticity
+
+
+def generateXYZtoRGBmatrix(Wx, Wy, Rx, Ry, Gx, Gy, Bx, By):
+    # Inverse RGB to XYZ matrix
+    return np.linalg.inv(generateRGBtoXYZmatrix(Wx, Wy, Rx, Ry, Gx, Gy, Bx, By))
+
+
+def xytoXYZ(xy, Y=1):
+    S = Y/xy[1]
+    X = xy[0]*S
+    Z = (1 - xy[0] - xy[1]) * S
+    
+    return np.array([X, Y, Z])
+
+def XYZtoxy(XYZ):
+    S = sum(XYZ)
+    return np.array([XYZ[0]/S, XYZ[1]/S])
