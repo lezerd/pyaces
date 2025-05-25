@@ -43,3 +43,46 @@ def rgb_2_yc(rgb: np.array, ycRadiusWeight: float = 1.75) -> float:
 
     chroma = math.sqrt(b * (b - g) + g * (g - r) + r * (r - b))
     return (b + g + r + ycRadiusWeight * chroma) / 3
+
+
+def calc_sat_adjust_matrix(sat: float, rgb2Y: np.array) -> np.array:
+    #
+    # This function determines the terms for a 3x3 saturation matrix that is
+    # based on the luminance of the input.
+    #
+    M = np.zeros((3, 3))
+    M[0][0] = (1.0 - sat) * rgb2Y[0] + sat
+    M[1][0] = (1.0 - sat) * rgb2Y[0]
+    M[2][0] = (1.0 - sat) * rgb2Y[0]
+
+    M[0][1] = (1.0 - sat) * rgb2Y[1]
+    M[1][1] = (1.0 - sat) * rgb2Y[1] + sat
+    M[2][1] = (1.0 - sat) * rgb2Y[1]
+
+    M[0][2] = (1.0 - sat) * rgb2Y[2]
+    M[1][2] = (1.0 - sat) * rgb2Y[2]
+    M[2][2] = (1.0 - sat) * rgb2Y[2] + sat
+
+    return M
+
+
+# Transformations between CIE XYZ tristimulus values and CIE x,y
+# chromaticity coordinates
+def XYZ_2_xyY(XYZ: np.array) -> np.array:
+    xyY = np.empty((3))
+    divisor = XYZ[0] + XYZ[1] + XYZ[2]
+    if divisor == 0.0:
+        divisor = 1e-10
+    xyY[0] = XYZ[0] / divisor
+    xyY[1] = XYZ[1] / divisor
+    xyY[2] = XYZ[1]
+    return xyY
+
+
+def xyY_2_XYZ(xyY: np.array) -> np.array:
+    XYZ = np.empty((3))
+    XYZ[0] = xyY[0] * xyY[2] / max(xyY[1], 1e-10)
+    XYZ[1] = xyY[2]
+    XYZ[2] = (1.0 - xyY[0] - xyY[1]) * xyY[2] / max(xyY[1], 1e-10)
+
+    return XYZ

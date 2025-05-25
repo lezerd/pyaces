@@ -17,11 +17,57 @@ def lin_to_rle(lin):
     return math.log2(max(lin, 2e-16)) - MIDDLE_GRAY_LE
 
 
+def rle_to_lin(rle):
+    MIDDLE_GRAY_LE = -2.473931188332412
+    return 2 ** (rle + MIDDLE_GRAY_LE)
+
+
 def sRGBOETF(lin):
     return 1.055 * lin ** (1 / 2.4) - 0.055 if lin > 0.0031308 else 12.92 * lin
 
 
+def acescct_logtolin(log):
+    return (
+        (log - 0.0729055341958355) / 10.5402377416545
+        if log <= 0.155251141552511
+        else min(65504, math.pow(2, log * 17.52 - 9.72))
+    )
+
+
+def acescct_lintolog(lin):
+    log = (
+        lin * 10.5402377416545 + 0.0729055341958355
+        if lin <= 0.0078125
+        else (math.log2(lin) + 9.72) / 17.52
+    )
+    return log
+
+
+def acescc_lintolog(lin):
+    if lin <= 0:
+        return (math.log2(2**-16) + 9.72) / 17.52
+    elif lin < 2**-15:
+        return (math.log2(2**-16 + lin * 0.5) + 9.72) / 17.52
+    else:
+        return (math.log2(lin) + 9.72) / 17.52
+
+
+def acescc_logtolin(logval):
+    logval = float(logval)
+    lin_thres = (math.log2(2**-15) + 9.72) / 17.52
+
+    if logval < lin_thres:
+        return (2 ** (logval * 17.52 - 9.72) - 2**-16) * 2.0
+    else:
+        return 2 ** (logval * 17.52 - 9.72)
+
+
 rle = np.vectorize(lin_to_rle)
+rle2lin = np.vectorize(rle_to_lin)
+cct_lin_to_log = np.vectorize(acescct_lintolog)
+cct_log_to_lin = np.vectorize(acescct_logtolin)
+cc_lin_to_log = np.vectorize(acescc_lintolog)
+cc_log_to_lin = np.vectorize(acescc_logtolin)
 
 # fig, ax = plt.subplots()
 # plt.style.use("seaborn-v0_8-whitegrid")
@@ -188,20 +234,79 @@ from lib.RRT_Common import (  # noqa: E402
 )
 from lib.utilities_color import rgb_2_hue
 
-vis = CubeRGB.id(60)
-for i in range(0, vis.values.shape[0]):
-    for j in range(0, vis.values.shape[1]):
-        aces = np.copy(vis.values[i, j, :])
-        saturation = rgb_2_saturation(aces)
-        hue = rgb_2_hue(aces)
-        centeredHue = center_hue(hue, RRT_RED_HUE)
-        hueWeight = cubic_basis_shaper(centeredHue, RRT_RED_WIDTH)
+##vis = CubeRGB.id(60)
+##for i in range(0, vis.values.shape[0]):
+##    for j in range(0, vis.values.shape[1]):
+##        aces = np.copy(vis.values[i, j, :])
+##        saturation = rgb_2_saturation(aces)
+##        hue = rgb_2_hue(aces)
+##        centeredHue = center_hue(hue, RRT_RED_HUE)
+##        hueWeight = cubic_basis_shaper(centeredHue, RRT_RED_WIDTH)
+##
+##        aces[0] = aces[0] + hueWeight * saturation * (RRT_RED_PIVOT - aces[0]) * (
+##            1.0 - RRT_RED_SCALE
+##        )
+##        if not hue == 0:
+##            vis.alpha[i, j] = 0
+##        vis.values[i, j, :] = aces
+##        # vis.points_original_color[i, j, :] = np.array([hueWeight, 0, 0])
+##vis.show()
 
-        aces[0] = aces[0] + hueWeight * saturation * (RRT_RED_PIVOT - aces[0]) * (
-            1.0 - RRT_RED_SCALE
-        )
-        if not hue == 0:
-            vis.alpha[i, j] = 0
-        vis.values[i, j, :] = aces
-        # vis.points_original_color[i, j, :] = np.array([hueWeight, 0, 0])
-vis.show()
+# visualise global desaturation
+##from lib.RRT_Common import RRT_SAT_MAT
+##
+##
+##vis = CubeRGB.id(60)
+##for i in range(0, vis.values.shape[0]):
+##    for j in range(0, vis.values.shape[1]):
+##        aces = np.copy(vis.values[i, j, :])
+##        acesAP1 = AP0_to_AP1_MATRIX @ aces
+##        acesAP1 = RRT_SAT_MAT @ acesAP1
+##        aces = AP1_to_AP0_MATRIX @ aces
+##        # if not hue == 0:
+##        #   vis.alpha[i, j] = 0
+##        vis.values[i, j, :] = aces
+##        # vis.points_original_color[i, j, :] = np.array([hueWeight, 0, 0])
+##vis.show()
+
+# visualise RRT
+##from rrt import rrt_main
+##from lib.transform_common import AP0_to_AP1_MATRIX, AP1_to_AP0_MATRIX
+##
+##vis = CubeRGB.id(33)
+##for i in range(0, vis.values.shape[0]):
+##    for j in range(0, vis.values.shape[1]):
+##        aces = np.copy(vis.values[i, j, :])
+##        # aces = np.clip(cc_log_to_lin(aces), 0, float("inf"))
+##        aces = AP1_to_AP0_MATRIX @ aces
+##        aces = rrt_main(aces, tonescale=False)
+##        aces = AP0_to_AP1_MATRIX @ aces
+##        # aces = np.clip(cc_lin_to_log(aces), 0, float("inf"))
+##        vis.values[i, j, :] = aces
+##        # vis.points_original_color[i, j, :] = np.array([hueWeight, 0, 0])
+##vis.show()
+
+# vis tonescale :
+from lib.Tonescales import segmented_spline_c5_fwd, segmented_spline_c9_fwd
+
+fig, ax = plt.subplots()
+plt.style.use("seaborn-v0_8-whitegrid")
+ax.spines["bottom"].set_linewidth(2)
+ax.spines["left"].set_linewidth(2)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.tick_params(width=2)
+ax.grid(True)
+# ax.set_xlim(0, 100)
+# ax.set_ylim(0, 1)
+
+x_axis = np.linspace(math.log10(5.5e-6), math.log10(47000), 220)
+x_axis = np.pow(10, x_axis)
+y_axis = []
+for x in x_axis:
+    y = segmented_spline_c9_fwd(x)
+    y_axis.append(y)
+y_axis = np.array(y_axis)
+print(segmented_spline_c9_fwd(4.8))
+plt.plot(np.log10(x_axis), np.log10(y_axis))
+plt.show()

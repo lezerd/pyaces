@@ -12,8 +12,9 @@ import numpy as np
 #   Output is OCES
 #
 
-from lib.transform_common import rgb_2_saturation
+from lib.transform_common import rgb_2_saturation, AP0_to_AP1_MATRIX, AP1_to_AP0_MATRIX
 from lib.utilities_color import rgb_2_yc, rgb_2_hue
+from lib.Tonescales import segmented_spline_c5_fwd
 from lib.RRT_Common import (
     sigmoid_shaper,
     glow_fwd,
@@ -25,25 +26,63 @@ from lib.RRT_Common import (
     RRT_RED_PIVOT,
     RRT_RED_SCALE,
     RRT_RED_WIDTH,
+    RRT_SAT_MAT,
 )
 
 
-def rrt_main(aces: np.array) -> np.array:
-    # // --- Glow module --- //
-    saturation = rgb_2_saturation(aces)
-    ycIn = rgb_2_yc(aces)
-    s = sigmoid_shaper((saturation - 0.4) / 0.2)
-    addedGlow = 1.0 + glow_fwd(ycIn, RRT_GLOW_GAIN * s, RRT_GLOW_MID)
+def rrt_main(
+    aces: np.array,
+    glow=True,
+    red_modifier=True,
+    desaturation=True,
+    tonescale=True,
+    clip=True,
+) -> np.array:
+    if glow:
+        # // --- Glow module --- //
+        saturation = rgb_2_saturation(aces)
+        ycIn = rgb_2_yc(aces)
+        s = sigmoid_shaper((saturation - 0.4) / 0.2)
+        addedGlow = 1.0 + glow_fwd(ycIn, RRT_GLOW_GAIN * s, RRT_GLOW_MID)
 
-    aces = addedGlow * aces
+        aces = addedGlow * aces
 
-    # // --- Red modifier --- //
-    hue = rgb_2_hue(aces)
-    centeredHue = center_hue(hue, RRT_RED_HUE)
-    hueWeight = cubic_basis_shaper(centeredHue, RRT_RED_WIDTH)
+    if red_modifier:
+        # // --- Red modifier --- //
+        hue = rgb_2_hue(aces)
+        centeredHue = center_hue(hue, RRT_RED_HUE)
+        hueWeight = cubic_basis_shaper(centeredHue, RRT_RED_WIDTH)
 
-    aces[0] = aces[0] + hueWeight * saturation * (RRT_RED_PIVOT - aces[0]) * (
-        1.0 - RRT_RED_SCALE
-    )
+        aces[0] = aces[0] + hueWeight * saturation * (RRT_RED_PIVOT - aces[0]) * (
+            1.0 - RRT_RED_SCALE
+        )
 
-    return aces
+    # // --- ACES to RGB rendering space --- //
+    aces = np.clip(
+        aces, 0.0, float("inf")
+    )  # avoids saturated negative colors from becoming positive in the matrix
+
+    rgbPre = AP0_to_AP1_MATRIX @ aces  # convert to AP1
+
+    if clip:
+        rgbPre = np.clip(
+            rgbPre, 0.0, np.finfo(np.float16).max
+        )  # CLip to max AP1 value 65504 (max float16 value)
+
+    if desaturation:
+        # // --- Global desaturation --- //
+        rgbPre = RRT_SAT_MAT @ rgbPre
+
+    if tonescale:
+        # // --- Apply the tonescale independently in rendering-space RGB --- //
+        rgbPost = np.zeros((3))
+        rgbPost[0] = segmented_spline_c5_fwd(rgbPre[0])
+        rgbPost[1] = segmented_spline_c5_fwd(rgbPre[1])
+        rgbPost[2] = segmented_spline_c5_fwd(rgbPre[2])
+    else:
+        rgbPost = rgbPre
+
+    # // --- RGB rendering space to OCES --- //
+    rgbOces = AP1_to_AP0_MATRIX @ rgbPost
+
+    return rgbOces

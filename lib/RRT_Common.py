@@ -1,6 +1,8 @@
 import math
 import numpy as np
 import copy
+from .transform_common import AP1_RGB2Y
+from .utilities_color import calc_sat_adjust_matrix
 
 # "Glow" module constants
 RRT_GLOW_GAIN = 0.05
@@ -11,6 +13,9 @@ RRT_RED_SCALE = 0.82
 RRT_RED_PIVOT = 0.03
 RRT_RED_HUE = 0.0
 RRT_RED_WIDTH = 135.0
+
+RRT_SAT_FACTOR = 0.96
+RRT_SAT_MAT = calc_sat_adjust_matrix(RRT_SAT_FACTOR, AP1_RGB2Y)
 
 
 def sigmoid_shaper(x: float) -> float:
