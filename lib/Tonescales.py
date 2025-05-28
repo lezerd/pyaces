@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 import math
 import numpy as np
+from .dtype import f32
 
-M = np.array([[0.5, -1.0, 0.5], [-1.0, 1.0, 0.5], [0.5, 0.0, 0.0]])
+M = f32(np.array([[0.5, -1.0, 0.5], [-1.0, 1.0, 0.5], [0.5, 0.0, 0.0]]))
 
 
 @dataclass
@@ -43,28 +44,36 @@ class SegmentedSplineParams_c9:
 
 RRT_PARAMS = SegmentedSplineParams_c5(
     # coefsLow[6]
-    [
-        -4.0000000000,
-        -4.0000000000,
-        -3.1573765773,
-        -0.4852499958,
-        1.8477324706,
-        1.8477324706,
-    ],
+    f32(
+        np.array(
+            [
+                -4.0000000000,
+                -4.0000000000,
+                -3.1573765773,
+                -0.4852499958,
+                1.8477324706,
+                1.8477324706,
+            ]
+        )
+    ),
     # coefsHigh[6]
-    [
-        -0.7185482425,
-        2.0810307172,
-        3.6681241237,
-        4.0000000000,
-        4.0000000000,
-        4.0000000000,
-    ],
-    SplineMapPoint(0.18 * pow(2.0, -15), 0.0001),  # minPoint
-    SplineMapPoint(0.18, 4.8),  # midPoint
-    SplineMapPoint(0.18 * pow(2.0, 18), 10000.0),  # maxPoint
-    0.0,  # slopeLow
-    0.0,  # slopeHigh
+    f32(
+        np.array(
+            [
+                -0.7185482425,
+                2.0810307172,
+                3.6681241237,
+                4.0000000000,
+                4.0000000000,
+                4.0000000000,
+            ]
+        )
+    ),
+    SplineMapPoint(f32(0.18) * np.pow(f32(2.0), f32(-15)), f32(0.0001)),  # minPoint
+    SplineMapPoint(f32(0.18), f32(4.8)),  # midPoint
+    SplineMapPoint(f32(0.18) * np.pow(f32(2.0), f32(18)), f32(10000.0)),  # maxPoint
+    f32(0.0),  # slopeLow
+    f32(0.0),  # slopeHigh
 )
 
 
@@ -75,47 +84,49 @@ def segmented_spline_c5_fwd(x, C: SegmentedSplineParams_c5 = RRT_PARAMS):
 
     # Check for negatives or zero before taking the log. If negative or zero,
     # set to HALF_MIN.
-    logx = math.log10(max(x, np.finfo(np.float16).tiny))
-    logy: float = 0
+    logx = np.log10(max(x, np.finfo(np.float32).tiny))
+    logy: float = f32(0)
 
-    if logx <= math.log10(C.minPoint.x):
-        logy = logx * C.slopeLow + (
-            math.log10(C.minPoint.y) - C.slopeLow * math.log10(C.minPoint.x)
+    if logx <= np.log10(C.minPoint.x):
+        logy = f32(
+            logx * C.slopeLow
+            + (np.log10(C.minPoint.y) - C.slopeLow * np.log10(C.minPoint.x))
         )
 
-    elif (logx > math.log10(C.minPoint.x)) and (logx < math.log10(C.midPoint.x)):
+    elif (logx > np.log10(C.minPoint.x)) and (logx < np.log10(C.midPoint.x)):
         knot_coord = (
             (N_KNOTS_LOW - 1)
-            * (logx - math.log10(C.minPoint.x))
-            / (math.log10(C.midPoint.x) - math.log10(C.minPoint.x))
+            * (logx - np.log10(C.minPoint.x))
+            / (np.log10(C.midPoint.x) - np.log10(C.minPoint.x))
         )
         j = int(knot_coord)
         t = knot_coord - j
 
-        cf = np.array([C.coefsLow[j], C.coefsLow[j + 1], C.coefsLow[j + 2]])
+        cf = f32(np.array([C.coefsLow[j], C.coefsLow[j + 1], C.coefsLow[j + 2]]))
 
-        monomials = np.array([t * t, t, 1.0])
-        logy = np.dot(monomials, (cf @ M))
+        monomials = f32(np.array([t * t, t, 1.0]))
+        logy = f32(monomials @ (cf @ M))
 
-    elif (logx >= math.log10(C.midPoint.x)) and (logx < math.log10(C.maxPoint.x)):
+    elif (logx >= np.log10(C.midPoint.x)) and (logx < np.log10(C.maxPoint.x)):
         knot_coord = (
             (N_KNOTS_HIGH - 1)
-            * (logx - math.log10(C.midPoint.x))
-            / (math.log10(C.maxPoint.x) - math.log10(C.midPoint.x))
+            * (logx - np.log10(C.midPoint.x))
+            / (np.log10(C.maxPoint.x) - np.log10(C.midPoint.x))
         )
         j = int(knot_coord)
         t = knot_coord - j
 
-        cf = np.array([C.coefsHigh[j], C.coefsHigh[j + 1], C.coefsHigh[j + 2]])
+        cf = f32(np.array([C.coefsHigh[j], C.coefsHigh[j + 1], C.coefsHigh[j + 2]]))
 
-        monomials = np.array([t * t, t, 1.0])
-        logy = np.dot(monomials, (cf @ M))
+        monomials = f32(np.array([t * t, t, 1.0]))
+        logy = f32(monomials @ (cf @ M))
     else:  # if ( logIn >= log10(C.maxPoint.x) ) {
-        logy = logx * C.slopeHigh + (
-            math.log10(C.maxPoint.y) - C.slopeHigh * math.log10(C.maxPoint.x)
+        logy = f32(
+            logx * C.slopeHigh
+            + (np.log10(C.maxPoint.y) - C.slopeHigh * np.log10(C.maxPoint.x))
         )
 
-    return math.pow(10, logy)
+    return f32(np.pow(10, logy))
 
 
 ODT_48nits = SegmentedSplineParams_c9(
@@ -159,7 +170,7 @@ def segmented_spline_c9_fwd(x: float, C: SegmentedSplineParams_c9 = ODT_48nits):
 
     # Check for negatives or zero before taking the log. If negative or zero,
     # set to HALF_MIN.
-    logx = math.log10(max(x, np.finfo(np.float16).tiny))
+    logx = math.log10(max(x, np.finfo(np.float32).tiny))
 
     logy: float
 
@@ -180,7 +191,7 @@ def segmented_spline_c9_fwd(x: float, C: SegmentedSplineParams_c9 = ODT_48nits):
         cf = np.array([C.coefsLow[j], C.coefsLow[j + 1], C.coefsLow[j + 2]])
 
         monomials = np.array([t * t, t, 1.0])
-        logy = np.dot(monomials, (cf @ M))
+        logy = monomials @ (cf @ M)
 
     elif (logx >= math.log10(C.midPoint.x)) and (logx < math.log10(C.maxPoint.x)):
         knot_coord = (
@@ -193,7 +204,7 @@ def segmented_spline_c9_fwd(x: float, C: SegmentedSplineParams_c9 = ODT_48nits):
 
         cf = np.array([C.coefsHigh[j], C.coefsHigh[j + 1], C.coefsHigh[j + 2]])
         monomials = np.array([t * t, t, 1.0])
-        logy = np.dot(monomials, (cf @ M))
+        logy = monomials @ (cf @ M)
     else:  # if ( logIn >= log10(C.maxPoint.x) ) {
         logy = logx * C.slopeHigh + (
             math.log10(C.maxPoint.y) - C.slopeHigh * math.log10(C.maxPoint.x)

@@ -75,7 +75,7 @@ def rgb_2_yc(rgb: np.array, ycRadiusWeight: float = 1.75) -> float:
     g = rgb[1]
     b = rgb[2]
 
-    chroma = math.sqrt(max((b * (b - g) + g * (g - r) + r * (r - b)), 0.0))
+    chroma = math.sqrt((b * (b - g) + g * (g - r) + r * (r - b)))
     return (b + g + r + ycRadiusWeight * chroma) / 3
 
 

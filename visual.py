@@ -177,20 +177,20 @@ cc_log_to_lin = np.vectorize(acescc_logtolin)
 # plt.show()
 
 # Visualise glow module
-# vis = CubeRGB.id(60)
-# for i in range(0, vis.values.shape[0]):
-#    for j in range(0, vis.values.shape[1]):
-#        point_sat = rgb_2_saturation(vis.values[i, j, :])
-#        point_yc = rgb_2_yc(vis.values[i, j, :])
-#        point_s = sigmoid_shaper((point_sat - 0.4) / 0.2)
-#        glow = 1.0 + glow_fwd(point_yc, RRT_GLOW_GAIN * point_s, RRT_GLOW_MID)
-#        rgb = vis.values[i, j, :] * glow
-#        if glow == 1:
-#            vis.alpha[i, j] = 0
-#        else:
-#            print(f"In : {vis.values[i, j, :]}, Out: {rgb}")
-#        vis.values[i, j, :] = rgb
-# vis.show()
+##vis = CubeRGB.id(60)
+##for i in range(0, vis.values.shape[0]):
+##    for j in range(0, vis.values.shape[1]):
+##        point_sat = rgb_2_saturation(vis.values[i, j, :])
+##        point_yc = rgb_2_yc(vis.values[i, j, :])
+##        point_s = sigmoid_shaper((point_sat - 0.4) / 0.2)
+##        glow = 1.0 + glow_fwd(point_yc, RRT_GLOW_GAIN * point_s, RRT_GLOW_MID)
+##        rgb = vis.values[i, j, :] * glow
+##        if glow == 1:
+##            vis.alpha[i, j] = 0
+##        else:
+##            print(f"In : {vis.values[i, j, :]}, Out: {rgb}")
+##        vis.values[i, j, :] = rgb
+##vis.show()
 
 # visualise hue
 ##from lib.utilities_color import rgb_2_hue
@@ -204,30 +204,30 @@ cc_log_to_lin = np.vectorize(acescc_logtolin)
 ##vis.show()
 
 ### visualise cubic_basis_shaper
-##from lib.RRT_Common import cubic_basis_shaper
-##
-##fig, ax = plt.subplots()
-##plt.style.use("seaborn-v0_8-whitegrid")
-##ax.spines["bottom"].set_linewidth(2)
-##ax.spines["left"].set_linewidth(2)
-##ax.spines["top"].set_visible(False)
-##ax.spines["right"].set_visible(False)
-##ax.tick_params(width=2)
-##ax.grid(True)
-##ax.set_xlim(-180, 180)
-##ax.set_ylim(0, 1)
-##
-##x_axis = np.linspace(-180, 180, 720)
-##y_axis = []
-##w = 135
-##for x in x_axis:
-##    hue_weight = cubic_basis_shaper(x, w)
-##    y_axis.append(hue_weight)
-##print(cubic_basis_shaper(0, 135))
-##y_axis = np.array(y_axis)
-##plt.plot(x_axis, y_axis)
-##plt.show()
-##
+from lib.RRT_Common import cubic_basis_shaper
+
+fig, ax = plt.subplots()
+plt.style.use("seaborn-v0_8-whitegrid")
+ax.spines["bottom"].set_linewidth(2)
+ax.spines["left"].set_linewidth(2)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.tick_params(width=2)
+ax.grid(True)
+ax.set_xlim(-180, 180)
+ax.set_ylim(0, 1)
+
+x_axis = np.linspace(-180, 180, 720)
+y_axis = []
+w = 135
+for x in x_axis:
+    hue_weight = cubic_basis_shaper(x, w)
+    y_axis.append(hue_weight)
+print(cubic_basis_shaper(0, 135))
+y_axis = np.array(y_axis)
+plt.plot(x_axis, y_axis)
+plt.show()
+
 
 # Visualise red modifier module
 from lib.RRT_Common import (  # noqa: E402
@@ -275,7 +275,7 @@ from lib.utilities_color import rgb_2_hue
 ##        # vis.points_original_color[i, j, :] = np.array([hueWeight, 0, 0])
 ##vis.show()
 
-# visualise RRT
+### visualise RRT
 ##from rrt import rrt_main
 ##from lib.transform_common import AP0_to_AP1_MATRIX, AP1_to_AP0_MATRIX
 ##
@@ -318,65 +318,65 @@ from lib.utilities_color import rgb_2_hue
 ##plt.show()
 
 
-# vis gloabl tonescale :
-from rrt import rrt_main
-from ODT_REC709_100nits_dim import main_odt_rec709D65
-from lib.utilities_color import bt1886_f, bt1886_r
-from lib.ODT_Common import darkSurround_to_dimSurround
-
-DISPGAMMA = 2.4
-L_W = 1.0
-L_B = 0.0
-bt1886_f = np.vectorize(bt1886_f)
-bt1886_r = np.vectorize(bt1886_r)
-
-fig, ax = plt.subplots()
-plt.style.use("seaborn-v0_8-whitegrid")
-ax.spines["bottom"].set_linewidth(2)
-ax.spines["left"].set_linewidth(2)
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
-ax.tick_params(width=2)
-ax.grid(True)
-# ax.set_xlim(0, 100)
-min = np.log2(
-    bt1886_r(
-        darkSurround_to_dimSurround(np.array([0.02, 0.02, 0.02])),
-        DISPGAMMA,
-        L_W,
-        L_B,
-    )
-)
-# ax.set_ylim(0,1)
-
-x_axis = np.linspace(-11, 11, 220)
-x_axis = rle2lin(x_axis)
-y_axis = []
-for x in x_axis:
-    rgb = bt1886_f(
-        main_odt_rec709D65(
-            rrt_main(np.array([x, x, x]), tonescale=True),
-            tone_scale=True,
-            surround_adaptation=True,
-            gamma=True,
-            scale=True,
-        ),
-        DISPGAMMA,
-        L_W,
-        L_B,
-    )
-    y_axis.append(rgb[1])
-y_axis = np.array(y_axis)
-print(
-    bt1886_f(
-        main_odt_rec709D65(rrt_main(np.array([0.18, 0.18, 0.18]))),
-        DISPGAMMA,
-        L_W,
-        L_B,
-    )
-)
-plt.plot(rle(x_axis), (y_axis))
-plt.show()
+### vis gloabl tonescale :
+##from rrt import rrt_main
+##from ODT_REC709_100nits_dim import main_odt_rec709D65
+##from lib.utilities_color import bt1886_f, bt1886_r
+##from lib.ODT_Common import darkSurround_to_dimSurround
+##
+##DISPGAMMA = 2.4
+##L_W = 1.0
+##L_B = 0.0
+##bt1886_f = np.vectorize(bt1886_f)
+##bt1886_r = np.vectorize(bt1886_r)
+##
+##fig, ax = plt.subplots()
+##plt.style.use("seaborn-v0_8-whitegrid")
+##ax.spines["bottom"].set_linewidth(2)
+##ax.spines["left"].set_linewidth(2)
+##ax.spines["top"].set_visible(False)
+##ax.spines["right"].set_visible(False)
+##ax.tick_params(width=2)
+##ax.grid(True)
+### ax.set_xlim(0, 100)
+##min = np.log2(
+##    bt1886_r(
+##        darkSurround_to_dimSurround(np.array([0.02, 0.02, 0.02])),
+##        DISPGAMMA,
+##        L_W,
+##        L_B,
+##    )
+##)
+### ax.set_ylim(0,1)
+##
+##x_axis = np.linspace(-11, 11, 220)
+##x_axis = rle2lin(x_axis)
+##y_axis = []
+##for x in x_axis:
+##    rgb = bt1886_f(
+##        main_odt_rec709D65(
+##            rrt_main(np.array([x, x, x]), tonescale=True),
+##            tone_scale=True,
+##            surround_adaptation=True,
+##            gamma=True,
+##            scale=True,
+##        ),
+##        DISPGAMMA,
+##        L_W,
+##        L_B,
+##    )
+##    y_axis.append(rgb[1])
+##y_axis = np.array(y_axis)
+##print(
+##    bt1886_f(
+##        main_odt_rec709D65(rrt_main(np.array([0.18, 0.18, 0.18]))),
+##        DISPGAMMA,
+##        L_W,
+##        L_B,
+##    )
+##)
+##plt.plot(rle(x_axis), (y_axis))
+##plt.show()
 
 
 ### vis Y_2_LinCV :
